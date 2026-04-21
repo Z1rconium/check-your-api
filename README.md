@@ -1,6 +1,6 @@
 # check-your-api
 
-Batch availability checker for OpenAI-compatible APIs.
+Batch availability checker for OpenAI-compatible APIs with real-time latency monitoring.
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Z1rconium/check-your-api)
 
@@ -8,195 +8,249 @@ Batch availability checker for OpenAI-compatible APIs.
 
 ## Overview
 
-`check-your-api` is a small web UI for validating whether models exposed by an OpenAI-compatible endpoint are actually callable.
+`check-your-api` is a web-based tool for validating OpenAI-compatible API endpoints. It discovers available models and tests their actual availability through concurrent probe requests, providing immediate feedback on model status and first-token latency.
 
-It can now run in two modes with the same feature set:
+**Key capabilities:**
+- Fetch model lists from any OpenAI-compatible endpoint
+- Batch availability testing with configurable concurrency
+- First-token latency measurement for performance insights
+- Model selection and filtering for targeted testing
+- Form persistence via localStorage for convenience
 
-- deploy to `Vercel`
-- run as a regular Node server with `npm run start`
+## Technology Stack
 
-It does two things:
+**Frontend:**
+- React 18.3+ with TypeScript
+- Vite 5.4+ for build tooling
+- CSS3 with custom properties for theming
 
-- fetches models from `GET /models`
-- sends concurrent probe requests to `POST /chat/completions`
+**Backend:**
+- Node.js 18+ runtime
+- Express 4.21+ for development/production server
+- Vercel serverless functions for cloud deployment
 
-Each model is marked as either:
+**Development:**
+- TypeScript 5.5+ with strict type checking
+- TSX for development hot-reload
+- Concurrently for parallel dev processes
 
-- `Available`
-- `Unavailable`
+## Architecture
 
-No response content is shown in the UI, but available models also show first-token latency.
+The application uses a proxy architecture to avoid CORS issues:
 
-## Features
+```
+Browser → Frontend (React)
+    ↓
+    /api/models or /api/check
+    ↓
+Backend Proxy Layer (Express or Vercel Functions)
+    ↓
+Target OpenAI-compatible API
+```
 
-- OpenAI-compatible API model discovery
-- Batch availability checking
-- Configurable concurrency
-- Custom request content
-- Same-origin API layer to avoid browser CORS issues
-- First-token latency for available models
-- Form persistence via `localStorage`
+**Core components:**
+- `src/App.tsx` - Main React application with state management
+- `server/core.ts` - Shared request handling logic
+- `server/app.ts` - Express server for Node.js deployment
+- `api/*.ts` - Vercel serverless function handlers
 
-## Screenshot-Level Behavior
+**Request flow:**
+1. User configures base URL, API key, and concurrency
+2. Frontend fetches models via `/api/models`
+3. User selects models and initiates batch check
+4. Frontend sends concurrent requests to `/api/check`
+5. Backend proxies streaming requests to target API
+6. First-token latency is measured and displayed
 
-The UI includes:
+## Getting Started
 
-- `API Base URL`
-- `API Key`
-- `Concurrency`
-- `Request Content`
-- `Fetch Models`
-- `Batch Check`
+### Prerequisites
 
-The request content defaults to `Hi`.
+- Node.js 18 or higher
+- npm package manager
+- Valid OpenAI-compatible API endpoint and key
 
-## How It Works
+### Installation
 
-The browser never calls the target API directly.
+```bash
+npm install
+```
 
-Instead:
+### Development Mode
 
-1. the frontend sends requests to `/api/models` and `/api/check`
-2. the server layer forwards them to the target API
-3. the UI updates each model status based on success or failure
+Run both frontend and backend in watch mode:
 
-Probe requests use this shape:
+```bash
+npm run dev
+```
 
+Access the application at:
+- Frontend: `http://127.0.0.1:5173`
+- Backend proxy: `http://127.0.0.1:8787`
+
+### Production Build
+
+Build the application:
+
+```bash
+npm run build
+```
+
+Start the production server:
+
+```bash
+npm run start
+```
+
+Override the default port if needed:
+
+```bash
+PORT=3000 npm run start
+```
+
+## Deployment
+
+### Vercel (Recommended)
+
+This project is optimized for Vercel deployment with zero configuration:
+
+```bash
+vercel
+```
+
+Or click the "Deploy with Vercel" button above to deploy directly from GitHub.
+
+The `vercel.json` configuration automatically:
+- Builds the Vite frontend to `dist/`
+- Exposes `/api/models` and `/api/check` as serverless functions
+- Serves static assets from the build output
+
+### Self-Hosted
+
+Build and run on any Node.js-compatible server:
+
+```bash
+npm run build
+npm run start
+```
+
+The server listens on port 8787 by default (configurable via `PORT` environment variable).
+
+## Project Structure
+
+```
+.
+├── api/                    # Vercel serverless functions
+│   ├── check.ts           # Model availability check endpoint
+│   └── models.ts          # Model list fetch endpoint
+├── server/                # Node.js server implementation
+│   ├── core.ts           # Shared request handling logic
+│   ├── app.ts            # Express application setup
+│   └── index.ts          # Server entry point
+├── src/                   # React frontend
+│   ├── App.tsx           # Main application component
+│   ├── main.tsx          # React entry point
+│   └── styles.css        # Application styles
+├── vite.config.ts        # Vite build configuration
+├── vercel.json           # Vercel deployment config
+└── package.json          # Dependencies and scripts
+```
+
+## Key Features
+
+### Model Discovery
+Automatically fetches available models from the configured endpoint's `/models` endpoint.
+
+### Selective Testing
+Choose which models to test using the model picker with search and bulk selection controls.
+
+### Concurrent Checking
+Configure concurrency (1-N parallel requests) to balance speed against rate limits.
+
+### Performance Metrics
+Displays first-token latency for available models, color-coded by response speed:
+- **Fast**: ≤800ms
+- **Medium**: 801-2000ms
+- **Slow**: >2000ms
+
+### Result Filtering
+Filter results by status: All, Available, Unavailable, or Pending.
+
+### Custom Prompts
+Use consistent test prompts across all models for comparable results.
+
+### Form Persistence
+API credentials and settings are saved to browser localStorage for convenience.
+
+## API Compatibility
+
+This tool expects the target service to implement:
+
+- `GET {baseUrl}/models` - Returns list of available models
+- `POST {baseUrl}/chat/completions` - Accepts chat completion requests with streaming
+
+**Compatible services:**
+- OpenAI API (`https://api.openai.com/v1`)
+- Azure OpenAI Service
+- OpenRouter
+- Any OpenAI-compatible proxy or gateway
+
+**Probe request format:**
 ```json
 {
   "model": "model-id",
-  "messages": [
-    {
-      "role": "user",
-      "content": "Hi"
-    }
-  ],
+  "messages": [{"role": "user", "content": "Hi"}],
   "stream": true,
   "temperature": 0,
   "max_tokens": 64
 }
 ```
 
-If the upstream request succeeds, the model is treated as available.
-If the upstream emits streamed text, the UI also shows the first-token latency.
+## Usage Notes
 
-## Requirements
+- **Concurrency**: Higher values test faster but may trigger rate limits. Start with 3-5.
+- **Security**: API keys are stored in browser localStorage only, never sent to third parties.
+- **Availability**: A model appearing in `/models` doesn't guarantee it's callable.
+- **Latency**: First-token latency measures time to first streamed response chunk.
+- **Timeout**: Requests timeout after 30 seconds.
 
-- Node.js 18+
-- npm
+## Development
 
-## Quick Start
+### Scripts
 
-Install dependencies:
+- `npm run dev` - Start development mode (frontend + backend)
+- `npm run dev:web` - Start Vite dev server only
+- `npm run dev:proxy` - Start Express proxy server only
+- `npm run build` - Build for production
+- `npm run build:web` - Build frontend only
+- `npm run build:server` - Build backend only
+- `npm run start` - Start production server
+- `npm run preview` - Preview production build locally
 
-```bash
-npm install
-```
+### TypeScript Configuration
 
-Run in development mode:
-
-```bash
-npm run dev
-```
-
-Default local addresses:
-
-- frontend: `http://127.0.0.1:5173`
-- proxy: `http://127.0.0.1:8787`
-
-## Production
-
-### Run on a regular server
-
-Build:
-
-```bash
-npm run build
-```
-
-Start:
-
-```bash
-npm run start
-```
-
-Override the server port if needed:
-
-```bash
-PORT=3000 npm run start
-```
-
-### Deploy to Vercel
-
-This repo now includes:
-
-- `api/models.ts`
-- `api/check.ts`
-- `vercel.json`
-
-Deploy steps:
-
-```bash
-vercel
-```
-
-Or import the repo in the Vercel dashboard directly.
-
-Vercel will:
-
-- build the frontend from `dist`
-- expose `/api/models`
-- expose `/api/check`
-
-No extra rewrite or proxy config is required.
-
-## API Compatibility
-
-This project assumes the target service exposes:
-
-- `GET {baseUrl}/models`
-- `POST {baseUrl}/chat/completions`
-
-Example base URLs:
-
-```text
-https://api.openai.com/v1
-https://your-provider.example.com/v1
-```
-
-## Project Structure
-
-```text
-.
-├── api/
-│   ├── check.ts
-│   └── models.ts
-├── server/
-│   ├── app.ts
-│   ├── core.ts
-│   └── index.ts
-├── src/
-│   ├── App.tsx
-│   ├── main.tsx
-│   └── styles.css
-├── vite.config.ts
-└── package.json
-```
-
-## Notes
-
-- Higher concurrency is not always better. It can trigger upstream rate limits or gateway protection.
-- The API key is stored in browser `localStorage` for convenience.
-- A model appearing in `/models` does not guarantee it is actually callable.
-- Results do not show response bodies, only availability and first-token latency.
+The project uses TypeScript project references:
+- `tsconfig.app.json` - Frontend configuration
+- `tsconfig.node.json` - Vite config types
+- `tsconfig.server.json` - Backend server types
 
 ## Roadmap
 
-- export results as `csv` or `json`
-- show optional failure details
-- add retry and rate-limit strategies
-- support more probe types beyond chat completions
+- [ ] Export results as CSV or JSON
+- [ ] Display detailed error messages for failures
+- [ ] Add retry logic and rate-limit handling
+- [ ] Support additional probe types (embeddings, completions)
+- [ ] Model comparison view
+- [ ] Historical latency tracking
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues or pull requests.
 
 ## License
 
-No `LICENSE` file has been added yet.
+No license file has been added yet. Please contact the repository owner for licensing information.
+
+## Acknowledgments
+
+Built with React, Vite, Express, and TypeScript. Designed for developers working with OpenAI-compatible APIs.
