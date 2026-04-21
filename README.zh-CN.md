@@ -2,6 +2,8 @@
 
 面向 OpenAI 兼容 API 的批量可用性检测工具。
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Z1rconium/check-your-api)
+
 [English](./README.md)
 
 ## 简介

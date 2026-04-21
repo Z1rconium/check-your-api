@@ -2,6 +2,8 @@
 
 Batch availability checker for OpenAI-compatible APIs.
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Z1rconium/check-your-api)
+
 [简体中文](./README.zh-CN.md)
 
 ## Overview
