@@ -1,0 +1,35 @@
+{
+  "name": "check-your-api",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "concurrently -k \"npm:dev:proxy\" \"npm:dev:web\"",
+    "dev:proxy": "NODE_ENV=development tsx watch server/index.ts",
+    "dev:web": "vite",
+    "build": "tsc -b && npm run build:web && npm run build:server",
+    "build:web": "vite build",
+    "build:server": "tsc -p tsconfig.server.json",
+    "preview": "vite preview",
+    "start": "NODE_ENV=production node .server-build/server/index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.15.3",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^9.1.2",
+    "typescript": "^5.5.4",
+    "tsx": "^4.19.3",
+    "vite": "^5.4.2"
+  }
+}
