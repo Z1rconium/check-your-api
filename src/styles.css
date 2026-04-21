@@ -1,11 +1,21 @@
 :root {
+  --pointer-x: 0;
+  --pointer-y: 0;
   font-family:
     "IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Hiragino Sans GB",
     sans-serif;
   color: #f8f3e7;
   background:
-    radial-gradient(circle at top left, rgba(255, 107, 0, 0.22), transparent 24%),
-    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.12), transparent 18%),
+    radial-gradient(
+      circle at calc(14% + var(--pointer-x) * 8%) calc(10% + var(--pointer-y) * 6%),
+      rgba(255, 107, 0, 0.22),
+      transparent 24%
+    ),
+    radial-gradient(
+      circle at calc(80% + var(--pointer-x) * 5%) calc(20% + var(--pointer-y) * 4%),
+      rgba(255, 255, 255, 0.12),
+      transparent 18%
+    ),
     linear-gradient(135deg, #121212 0%, #1b1f24 45%, #0c0f12 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -55,6 +65,8 @@ input {
   inset: auto;
   border-radius: 999px;
   filter: blur(12px);
+  transition: transform 220ms ease-out;
+  will-change: transform;
 }
 
 .backdrop-a {
@@ -63,6 +75,10 @@ input {
   width: 320px;
   height: 320px;
   background: rgba(255, 107, 0, 0.18);
+  transform: translate(
+    calc(var(--pointer-x) * -28px),
+    calc(var(--pointer-y) * -18px)
+  );
 }
 
 .backdrop-b {
@@ -71,6 +87,10 @@ input {
   width: 260px;
   height: 260px;
   background: rgba(255, 255, 255, 0.08);
+  transform: translate(
+    calc(var(--pointer-x) * 22px),
+    calc(var(--pointer-y) * 16px)
+  );
 }
 
 .hero,

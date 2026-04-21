@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type Model = {
   id: string;
@@ -153,6 +153,92 @@ export default function App() {
       Object.values(checkResults).filter((item) => item.status === "unavailable").length,
     [checkResults]
   );
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let frameId = 0;
+
+    const target = { x: 0, y: 0 };
+    const current = { x: 0, y: 0 };
+
+    const syncBackground = () => {
+      current.x += (target.x - current.x) * 0.08;
+      current.y += (target.y - current.y) * 0.08;
+
+      root.style.setProperty("--pointer-x", current.x.toFixed(4));
+      root.style.setProperty("--pointer-y", current.y.toFixed(4));
+
+      if (
+        Math.abs(target.x - current.x) > 0.001 ||
+        Math.abs(target.y - current.y) > 0.001
+      ) {
+        frameId = window.requestAnimationFrame(syncBackground);
+      } else {
+        frameId = 0;
+      }
+    };
+
+    const queueSync = () => {
+      if (frameId === 0) {
+        frameId = window.requestAnimationFrame(syncBackground);
+      }
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (mediaQuery.matches) {
+        return;
+      }
+
+      const nextX = event.clientX / window.innerWidth - 0.5;
+      const nextY = event.clientY / window.innerHeight - 0.5;
+
+      target.x = nextX;
+      target.y = nextY;
+      queueSync();
+    };
+
+    const handlePointerLeave = () => {
+      target.x = 0;
+      target.y = 0;
+      queueSync();
+    };
+
+    const handleReducedMotionChange = (event: MediaQueryListEvent) => {
+      if (!event.matches) {
+        return;
+      }
+
+      target.x = 0;
+      target.y = 0;
+      current.x = 0;
+      current.y = 0;
+      root.style.setProperty("--pointer-x", "0");
+      root.style.setProperty("--pointer-y", "0");
+
+      if (frameId !== 0) {
+        window.cancelAnimationFrame(frameId);
+        frameId = 0;
+      }
+    };
+
+    root.style.setProperty("--pointer-x", "0");
+    root.style.setProperty("--pointer-y", "0");
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerleave", handlePointerLeave);
+    mediaQuery.addEventListener("change", handleReducedMotionChange);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerleave", handlePointerLeave);
+      mediaQuery.removeEventListener("change", handleReducedMotionChange);
+
+      if (frameId !== 0) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
+  }, []);
 
   const persistForm = (nextForm: typeof form) => {
     setForm(nextForm);
