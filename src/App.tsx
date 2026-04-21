@@ -135,23 +135,30 @@ async function requestProxy<T>(path: string, body: Record<string, unknown>) {
 export default function App() {
   const [form, setForm] = useState(loadStoredForm);
   const [models, setModels] = useState<Model[]>([]);
+  const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
   const [fetchingModels, setFetchingModels] = useState(false);
   const [checkingModels, setCheckingModels] = useState(false);
+  const [showModelPicker, setShowModelPicker] = useState(false);
   const [fetchError, setFetchError] = useState("");
   const [checkResults, setCheckResults] = useState<Record<string, CheckResult>>({});
 
   const resolvedBaseUrl = useMemo(() => normalizeBaseUrl(form.baseUrl), [form.baseUrl]);
+  const selectedModelIdSet = useMemo(() => new Set(selectedModelIds), [selectedModelIds]);
+  const visibleModels = useMemo(
+    () => models.filter((model) => selectedModelIdSet.has(model.id)),
+    [models, selectedModelIdSet]
+  );
 
   const availableCount = useMemo(
     () =>
-      Object.values(checkResults).filter((item) => item.status === "available").length,
-    [checkResults]
+      visibleModels.filter((model) => checkResults[model.id]?.status === "available").length,
+    [checkResults, visibleModels]
   );
 
   const unavailableCount = useMemo(
     () =>
-      Object.values(checkResults).filter((item) => item.status === "unavailable").length,
-    [checkResults]
+      visibleModels.filter((model) => checkResults[model.id]?.status === "unavailable").length,
+    [checkResults, visibleModels]
   );
 
   useEffect(() => {
@@ -285,12 +292,16 @@ export default function App() {
         : [];
 
       setModels(nextModels);
+      setSelectedModelIds(nextModels.map((model) => model.id));
+      setShowModelPicker(false);
 
       if (nextModels.length === 0) {
         setFetchError("接口返回成功，但没拿到任何模型。");
       }
     } catch (error) {
       setModels([]);
+      setSelectedModelIds([]);
+      setShowModelPicker(false);
       setFetchError(getErrorMessage(error));
     } finally {
       setFetchingModels(false);
@@ -323,11 +334,16 @@ export default function App() {
       return;
     }
 
+    if (visibleModels.length === 0) {
+      setFetchError("至少选择一个要测活的模型。");
+      return;
+    }
+
     setCheckingModels(true);
     setFetchError("");
     setCheckResults(
       Object.fromEntries(
-        models.map((model) => [
+        visibleModels.map((model) => [
           model.id,
           {
             modelId: model.id,
@@ -339,7 +355,7 @@ export default function App() {
     );
 
     try {
-      const queue = [...models];
+      const queue = [...visibleModels];
       const workerCount = Math.min(concurrency, queue.length);
 
       await Promise.all(
@@ -374,6 +390,14 @@ export default function App() {
     } finally {
       setCheckingModels(false);
     }
+  };
+
+  const toggleModelSelection = (modelId: string) => {
+    setSelectedModelIds((current) =>
+      current.includes(modelId)
+        ? current.filter((id) => id !== modelId)
+        : [...current, modelId]
+    );
   };
 
   return (
@@ -451,8 +475,17 @@ export default function App() {
               <button
                 type="button"
                 className="secondary"
-                onClick={batchCheckModels}
+                onClick={() => setShowModelPicker(true)}
                 disabled={fetchingModels || checkingModels || models.length === 0}
+              >
+                选择检测模型 ({selectedModelIds.length}/{models.length})
+              </button>
+
+              <button
+                type="button"
+                className="secondary"
+                onClick={batchCheckModels}
+                disabled={fetchingModels || checkingModels || visibleModels.length === 0}
               >
                 {checkingModels ? "检测中..." : "批量检测"}
               </button>
@@ -476,8 +509,8 @@ export default function App() {
 
         <div className="stats">
           <div className="stat-card">
-            <span>模型总数</span>
-            <strong>{models.length}</strong>
+            <span>已选模型</span>
+            <strong>{selectedModelIds.length}</strong>
           </div>
           <div className="stat-card">
             <span>可用</span>
@@ -495,14 +528,16 @@ export default function App() {
       <section className="panel">
         <div className="section-head">
           <h2>模型列表</h2>
-          <p>按当前并发数批量测活</p>
+          <p>仅展示并检测当前选中的模型</p>
         </div>
 
         {models.length === 0 ? (
           <div className="empty">还没有模型。先点“获取可用模型”。</div>
+        ) : visibleModels.length === 0 ? (
+          <div className="empty">当前没有选中任何模型。</div>
         ) : (
           <div className="model-grid">
-            {models.map((model, index) => {
+            {visibleModels.map((model, index) => {
               const result = checkResults[model.id];
 
               return (
@@ -538,6 +573,65 @@ export default function App() {
           </div>
         )}
       </section>
+
+      {showModelPicker ? (
+        <div className="modal-backdrop" onClick={() => setShowModelPicker(false)}>
+          <section
+            className="modal panel"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="section-head modal-head">
+              <div>
+                <h2>选择检测模型</h2>
+                <p>默认全选，点一次取消，再点一次重新选中</p>
+              </div>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setShowModelPicker(false)}
+              >
+                完成
+              </button>
+            </div>
+
+            <div className="picker-toolbar">
+              <span>
+                已选 {selectedModelIds.length} / {models.length}
+              </span>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setSelectedModelIds(models.map((model) => model.id))}
+              >
+                全选
+              </button>
+            </div>
+
+            <div className="picker-list">
+              {models.map((model) => {
+                const selected = selectedModelIdSet.has(model.id);
+
+                return (
+                  <button
+                    key={model.id}
+                    type="button"
+                    className={`picker-item${selected ? " is-selected" : ""}`}
+                    onClick={() => toggleModelSelection(model.id)}
+                  >
+                    <span className="picker-check">{selected ? "✓" : ""}</span>
+                    <span className="picker-copy">
+                      <strong>{model.id}</strong>
+                      <small>
+                        {model.owned_by ? `owned by ${model.owned_by}` : "未提供所有者信息"}
+                      </small>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }
