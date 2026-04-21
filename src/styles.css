@@ -457,9 +457,24 @@ button:disabled {
 
 .latency {
   margin: 12px 0 0;
-  color: var(--success);
   font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
   font-size: 13px;
+}
+
+.latency-fast {
+  color: var(--success);
+}
+
+.latency-medium {
+  color: var(--warning);
+}
+
+.latency-slow {
+  color: var(--danger);
+}
+
+.latency-unknown {
+  color: var(--muted);
 }
 
 @media (max-width: 720px) {

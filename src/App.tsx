@@ -23,9 +23,13 @@ type CheckResponse = {
   firstTokenLatencyMs: number | null;
 };
 
+type LatencyLevel = "fast" | "medium" | "slow" | "unknown";
+
 const STORAGE_KEY = "check-your-api-form";
 const PROXY_ERROR_MESSAGE =
   "连不上当前站点的 API 服务。开发环境先运行 `npm run dev`，生产环境确认服务已经正常部署。";
+const FAST_FIRST_TOKEN_MS = 800;
+const MEDIUM_FIRST_TOKEN_MS = 2000;
 
 const defaultForm = {
   baseUrl: "",
@@ -84,6 +88,22 @@ function fuzzyMatch(value: string, query: string) {
   }
 
   return false;
+}
+
+function getLatencyLevel(latencyMs: number | null): LatencyLevel {
+  if (typeof latencyMs !== "number") {
+    return "unknown";
+  }
+
+  if (latencyMs <= FAST_FIRST_TOKEN_MS) {
+    return "fast";
+  }
+
+  if (latencyMs <= MEDIUM_FIRST_TOKEN_MS) {
+    return "medium";
+  }
+
+  return "slow";
 }
 
 function parseConcurrency(value: string) {
@@ -578,6 +598,7 @@ export default function App() {
           <div className="model-grid">
             {visibleModels.map((model, index) => {
               const result = checkResults[model.id];
+              const latencyLevel = getLatencyLevel(result?.firstTokenLatencyMs ?? null);
 
               return (
                 <article className="model-card" key={model.id}>
@@ -599,7 +620,7 @@ export default function App() {
                     {model.owned_by ? `owned by ${model.owned_by}` : "未提供所有者信息"}
                   </p>
                   {result?.status === "available" ? (
-                    <p className="latency">
+                    <p className={`latency latency-${latencyLevel}`}>
                       首字延迟{" "}
                       {typeof result.firstTokenLatencyMs === "number"
                         ? `${result.firstTokenLatencyMs} ms`
