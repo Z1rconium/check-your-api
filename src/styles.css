@@ -319,6 +319,16 @@ button:disabled {
   color: var(--muted);
 }
 
+.picker-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.picker-search {
+  margin-bottom: 16px;
+}
+
 .picker-list {
   display: grid;
   gap: 12px;

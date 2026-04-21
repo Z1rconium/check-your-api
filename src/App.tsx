@@ -59,6 +59,33 @@ function normalizeBaseUrl(url: string) {
   return url.trim().replace(/\/+$/, "");
 }
 
+function fuzzyMatch(value: string, query: string) {
+  const source = value.trim().toLowerCase();
+  const keyword = query.trim().toLowerCase();
+
+  if (!keyword) {
+    return true;
+  }
+
+  if (source.includes(keyword)) {
+    return true;
+  }
+
+  let keywordIndex = 0;
+
+  for (const char of source) {
+    if (char === keyword[keywordIndex]) {
+      keywordIndex += 1;
+    }
+
+    if (keywordIndex === keyword.length) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function parseConcurrency(value: string) {
   const parsed = Number(value);
 
@@ -139,6 +166,7 @@ export default function App() {
   const [fetchingModels, setFetchingModels] = useState(false);
   const [checkingModels, setCheckingModels] = useState(false);
   const [showModelPicker, setShowModelPicker] = useState(false);
+  const [modelSearchQuery, setModelSearchQuery] = useState("");
   const [fetchError, setFetchError] = useState("");
   const [checkResults, setCheckResults] = useState<Record<string, CheckResult>>({});
 
@@ -147,6 +175,15 @@ export default function App() {
   const visibleModels = useMemo(
     () => models.filter((model) => selectedModelIdSet.has(model.id)),
     [models, selectedModelIdSet]
+  );
+  const filteredPickerModels = useMemo(
+    () =>
+      models.filter(
+        (model) =>
+          fuzzyMatch(model.id, modelSearchQuery) ||
+          fuzzyMatch(model.owned_by ?? "", modelSearchQuery)
+      ),
+    [models, modelSearchQuery]
   );
 
   const availableCount = useMemo(
@@ -294,6 +331,7 @@ export default function App() {
       setModels(nextModels);
       setSelectedModelIds(nextModels.map((model) => model.id));
       setShowModelPicker(false);
+      setModelSearchQuery("");
 
       if (nextModels.length === 0) {
         setFetchError("接口返回成功，但没拿到任何模型。");
@@ -302,6 +340,7 @@ export default function App() {
       setModels([]);
       setSelectedModelIds([]);
       setShowModelPicker(false);
+      setModelSearchQuery("");
       setFetchError(getErrorMessage(error));
     } finally {
       setFetchingModels(false);
@@ -583,7 +622,6 @@ export default function App() {
             <div className="section-head modal-head">
               <div>
                 <h2>选择检测模型</h2>
-                <p>默认全选，点一次取消，再点一次重新选中</p>
               </div>
               <button
                 type="button"
@@ -598,17 +636,37 @@ export default function App() {
               <span>
                 已选 {selectedModelIds.length} / {models.length}
               </span>
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => setSelectedModelIds(models.map((model) => model.id))}
-              >
-                全选
-              </button>
+              <div className="picker-actions">
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => setSelectedModelIds([])}
+                >
+                  取消全选
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => setSelectedModelIds(models.map((model) => model.id))}
+                >
+                  全选
+                </button>
+              </div>
             </div>
 
+            <label className="field picker-search">
+              <span>搜索模型</span>
+              <input
+                placeholder="输入模型名或 owned by，支持模糊匹配"
+                value={modelSearchQuery}
+                onChange={(event) => setModelSearchQuery(event.target.value)}
+              />
+            </label>
+
             <div className="picker-list">
-              {models.map((model) => {
+              {filteredPickerModels.length === 0 ? (
+                <div className="empty">没有匹配到模型。</div>
+              ) : filteredPickerModels.map((model) => {
                 const selected = selectedModelIdSet.has(model.id);
 
                 return (
