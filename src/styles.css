@@ -639,7 +639,9 @@ button:disabled {
 
 .modal {
   width: min(780px, 100%);
-  max-height: min(82vh, 760px);
+  display: flex;
+  flex-direction: column;
+  max-height: min(82dvh, 760px);
   margin-bottom: 0;
   overflow: hidden;
   overscroll-behavior: contain;
@@ -674,9 +676,11 @@ button:disabled {
 
 .picker-list {
   display: grid;
+  flex: 1 1 auto;
   gap: 12px;
-  max-height: calc(min(82vh, 760px) - 220px);
+  min-height: 0;
   overflow-y: auto;
+  padding-bottom: 8px;
   padding-right: 4px;
   overscroll-behavior: contain;
 }
